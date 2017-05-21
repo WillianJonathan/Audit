@@ -1,5 +1,7 @@
-﻿Imports System.IO
+﻿Imports System.Data.SqlClient
+Imports System.IO
 Imports System.Net
+Imports ConsoleApplication3
 Imports Newtonsoft.Json
 
 Module Module1
@@ -9,7 +11,13 @@ Module Module1
         Try
             Dim a As New Ambiente
 
-            Console.WriteLine(JsonConvert.SerializeObject(a, Formatting.Indented))
+            Dim log As New UsuarioLog() With {.UsuarioId = 1, .Acao = Acao.Inserir, .Tela = 1, .Objeto = JsonConvert.SerializeObject(a, Formatting.Indented)}
+
+            Dim repo As New UsuarioLogRepository()
+
+            repo.Inserir(log)
+
+            ' Console.WriteLine(JsonConvert.SerializeObject(a, Formatting.Indented))
 
         Catch ex As Exception
 
@@ -22,6 +30,77 @@ Module Module1
     End Sub
 
 End Module
+
+Public Interface IUsuarioLogRepository
+
+    Sub Inserir(usuarioLog As UsuarioLog)
+
+End Interface
+
+Public Class UsuarioLogRepository
+    Implements IUsuarioLogRepository
+
+    Private Property _connectionString As String = "Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=TESTE;Integrated Security=True"
+
+    Public Sub Inserir(usuarioLog As UsuarioLog) Implements IUsuarioLogRepository.Inserir
+
+        Dim commandText As String = "INSERT INTO USUARIO_LOG (" &
+                                    " USR_LOG_USR_ID, " &
+                                    " USR_LOG_DATAHORA, " &
+                                    " USR_LOG_TELA, " &
+                                    " USR_LOG_ACAO, " &
+                                    " USR_LOG_OBJETO ) " &
+                                    " VALUES ( " &
+                                    " @USR_LOG_USR_ID, " &
+                                    " @USR_LOG_DATAHORA, " &
+                                    " @USR_LOG_TELA, " &
+                                    " @USR_LOG_ACAO, " &
+                                    " @USR_LOG_OBJETO ) "
+
+        Dim conn As New SqlConnection(_connectionString)
+
+        Dim cmd As New SqlCommand(commandText, conn)
+
+        cmd.Parameters.AddWithValue("@USR_LOG_USR_ID", usuarioLog.UsuarioId)
+        cmd.Parameters.AddWithValue("@USR_LOG_DATAHORA", Now)
+        cmd.Parameters.AddWithValue("@USR_LOG_TELA", usuarioLog.Tela)
+        cmd.Parameters.AddWithValue("@USR_LOG_ACAO", usuarioLog.Acao)
+        cmd.Parameters.AddWithValue("@USR_LOG_OBJETO", usuarioLog.Objeto)
+
+        Try
+            conn.Open()
+            cmd.ExecuteNonQuery()
+        Catch ex As Exception
+
+        Finally
+            If conn IsNot Nothing AndAlso conn.State <> ConnectionState.Closed Then
+                conn.Close()
+            End If
+        End Try
+
+    End Sub
+
+End Class
+
+Public Class UsuarioLog
+
+    Public Property UsuarioLogId As Integer
+    Public Property UsuarioId As Integer
+    Public ReadOnly Property DataHora As DateTime
+    Public Property Tela As String
+    Public Property Acao As Acao
+    Public Property Objeto As String
+
+End Class
+
+Public Enum Acao
+
+    Inserir = 1
+    Alterar = 2
+    Excluir = 3
+    Inativar = 4
+
+End Enum
 
 Public Class Ambiente
 
